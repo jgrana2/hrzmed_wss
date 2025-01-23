@@ -1,7 +1,7 @@
 // client.js
 const WebSocket = require('ws');
 
-// Replace this URL with your WSS endpoint
+// WSS endpoint
 const WSS_URL = 'wss://hrzmed.org';
 
 // Create the WebSocket client

@@ -2,10 +2,9 @@ const WebSocket = require('ws');
 const mongoose = require('mongoose');
 
 // Retrieve connection string from environment (docker-compose environment vars)
-const mongoUri = process.env.MONGO_URI || 'mongodb://mongo:27017/hrzsignaldb';
+const mongoUri = process.env.MONGO_URI || `mongodb://mongo:27017/${process.env.DBNAME}`;
 
 mongoose.connect(mongoUri, {
-  // recommended options
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
@@ -19,7 +18,7 @@ const wss = new WebSocket.Server({ port: 3000 }, () => {
 
 wss.on('connection', (ws) => {
   console.log('New client connected!');
-  
+
   ws.on('message', (message) => {
     console.log(`Received: ${message}`);
     ws.send('Hello from Node.js WebSocket + MongoDB server!');
