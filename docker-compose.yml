@@ -49,7 +49,6 @@ services:
 
 volumes:
   certbot-etc:
-    external: true
   certbot-var:
   certbot-www:
   mongo-data:
