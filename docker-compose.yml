@@ -8,28 +8,37 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      # Mount the Nginx configuration
       - ./nginx/conf.d:/etc/nginx/conf.d
-
-      # Shared volumes for certs and ACME challenges
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
       - certbot-www:/var/www/certbot
-
     restart: always
 
   websocket-server:
     build: .
     container_name: node-websocket
-    # Expose internal port 3000 (not published directly to host)
+    depends_on:
+      - mongo
     expose:
       - "3000"
+    environment:
+      MONGO_URI: ${MONGO_URI}
+    restart: always
+
+  mongo:
+    image: mongo:8.0
+    container_name: mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    volumes:
+      - mongo-data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d
     restart: always
 
   certbot:
     image: certbot/certbot:latest
     container_name: certbot
-    # Certbot also needs the same volumes to share certificates/challenges
     volumes:
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
@@ -39,3 +48,4 @@ volumes:
   certbot-etc:
   certbot-var:
   certbot-www:
+  mongo-data:

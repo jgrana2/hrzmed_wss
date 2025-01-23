@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/jgrana2/hrzmed_wss#readme",
   "dependencies": {
+    "mongoose": "^8.9.5",
     "ws": "^8.18.0"
   }
 }
