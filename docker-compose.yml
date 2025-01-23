@@ -37,9 +37,6 @@ services:
       - certbot-var:/var/lib/letsencrypt
       - certbot-www:/var/www/certbot
 
-    # We'll run certbot commands manually using docker-compose run
-    entrypoint: "/bin/sh"
-
 volumes:
   certbot-etc:
   certbot-var:
