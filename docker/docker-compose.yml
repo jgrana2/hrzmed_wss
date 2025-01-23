@@ -3,7 +3,7 @@ version: '3.8'
 services:
   node_ws:
     build:
-      context: ./docker/node/
+      context: ./node/
     restart: always
     networks:
       - backend
