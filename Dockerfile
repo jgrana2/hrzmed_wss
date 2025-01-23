@@ -1,10 +1,14 @@
-# docker/node/Dockerfile
 FROM node:18-alpine
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-COPY app.js .
+# Copy package files and install only production dependencies
+COPY package*.json ./
+RUN npm install --production
 
-RUN npm install ws
+# Copy the rest of the app source code
+COPY . .
 
-CMD ["node", "app.js"]
+EXPOSE 3000
+
+CMD ["node", "index.js"]

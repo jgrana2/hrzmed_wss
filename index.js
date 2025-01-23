@@ -1,11 +1,18 @@
-// docker/node/app.js
-const { WebSocketServer } = require('ws');
+const WebSocket = require('ws');
 
-const wss = new WebSocketServer({ port: 4433 });
+const wss = new WebSocket.Server({ port: 3000 }, () => {
+  console.log('WebSocket server is running on port 3000');
+});
 
 wss.on('connection', (ws) => {
-    ws.on('message', (message) => {
-        console.log(`Received: ${message}`);
-        ws.send('Hello from the server!');
-    });
+  console.log('New client connected!');
+  
+  ws.on('message', (message) => {
+    console.log(`Received message => ${message}`);
+    ws.send('Hello from Node.js WebSocket server!');
+  });
+
+  ws.on('close', () => {
+    console.log('Client disconnected');
+  });
 });
