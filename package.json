@@ -1,0 +1,24 @@
+{
+  "name": "hrzmed_wss",
+  "version": "1.0.0",
+  "description": "Node.js WebSocket server behind Nginx with Let's Encrypt",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jgrana2/hrzmed_wss.git"
+  },
+  "author": "Jose Granados",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jgrana2/hrzmed_wss/issues"
+  },
+  "homepage": "https://github.com/jgrana2/hrzmed_wss#readme",
+  "dependencies": {
+    "mongoose": "^8.9.5",
+    "ws": "^8.18.0"
+  }
+}
