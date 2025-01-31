@@ -19,7 +19,7 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocket.Server({ server });
 
 // MongoDB connection URI using the service name 'mongo'
-const mongoUrl = process.env.MONGO_URI;
+const mongoUrl = process.env.MONGO_URL;
 const dbName = process.env.DB_NAME;
 let db;
 
