@@ -38,6 +38,11 @@ wss.on('connection', (ws) => {
         try {
             const data = JSON.parse(message);
             
+            if (data.type === 'greeting') {
+                console.log(data.message); // Outputs "hello"
+                ws.send(JSON.stringify({ status: 'success', message: 'Greeting received' }));
+            }
+            
             if (data.type === 'new_recording') {
                 // Create a new recording entry
                 await db.collection('recordings').insertOne({
