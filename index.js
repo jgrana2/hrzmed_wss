@@ -1,15 +1,23 @@
-const http = require('http'); // Changed from 'https' to 'http'
+const http = require('http'); // Use 'http'
 const WebSocket = require('ws');
 const { MongoClient } = require('mongodb');
 
-// Create HTTP server (no SSL)
-const server = http.createServer();
+// Create HTTP server
+const server = http.createServer((req, res) => {
+    // Serve a Hello World HTML page at the root URL
+    if (req.url === '/') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end('<html><body><h1>Hello World</h1></body></html>');
+    } else {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('404 Not Found');
+    }
+});
 
 // Create WebSocket server attached to the HTTP server
 const wss = new WebSocket.Server({ server });
 
 // MongoDB connection URI using the service name 'mongo'
-// Update this if your MongoDB service has a different hostname in Docker Compose
 const mongoUrl = 'mongodb://mongo:27017';
 const dbName = 'ecg_db';
 let db;
@@ -90,5 +98,5 @@ wss.on('connection', (ws) => {
 // Start server on internal port (e.g., 3000)
 const PORT = 3000;
 server.listen(PORT, () => {
-    console.log(`WebSocket server is listening on port ${PORT}`);
+    console.log(`HTTP server is listening on port ${PORT}`);
 });
