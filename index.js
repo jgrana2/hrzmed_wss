@@ -1,3 +1,4 @@
+require('dotenv').config();
 const http = require('http'); // Use 'http'
 const WebSocket = require('ws');
 const { MongoClient } = require('mongodb');
@@ -18,8 +19,8 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocket.Server({ server });
 
 // MongoDB connection URI using the service name 'mongo'
-const mongoUrl = 'mongodb://mongo:27017';
-const dbName = 'ecg_db';
+const mongoUrl = process.env.MONGO_URI;
+const dbName = process.env.DB_NAME;
 let db;
 
 // Connect to MongoDB
