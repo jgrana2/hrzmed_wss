@@ -1,11 +1,10 @@
 require('dotenv').config();
-const http = require('http'); // Use 'http'
+const http = require('http');
 const WebSocket = require('ws');
 const { MongoClient } = require('mongodb');
 
 // Create HTTP server
 const server = http.createServer((req, res) => {
-    // Serve a Hello World HTML page at the root URL
     if (req.url === '/') {
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end('<html><body><h1>Hello World</h1></body></html>');
@@ -18,15 +17,17 @@ const server = http.createServer((req, res) => {
 // Create WebSocket server attached to the HTTP server
 const wss = new WebSocket.Server({ server });
 
-// MongoDB connection URI using the service name 'mongo'
-const mongoUser = process.env.MONGO_USER
-const mongoPass = process.env.MONGO_PASSWORD
-const dbName = process.env.DBNAME;
-const mongoUrl = `mongodb://${mongoUser}:${mongoPass}@mongo:27017/${dbName}`
+// MongoDB Connection Info
+const mongoUser = process.env.MONGO_USER;
+const mongoPass = process.env.MONGO_PASSWORD;
+const dbName = process.env.DB_NAME || process.env.DBNAME; // Ensure correct variable
+const mongoUrl = `mongodb://${mongoUser}:${mongoPass}@mongo:27017/${dbName}`;
+
 console.log('Mongo User:', mongoUser);
 console.log('Mongo Pass:', mongoPass);
 console.log('DB Name:', dbName);
 console.log('Mongo URL:', mongoUrl);
+
 let db;
 
 // Connect to MongoDB
@@ -35,7 +36,7 @@ MongoClient.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true 
         console.log('Connected to MongoDB');
         db = client.db(dbName);
     })
-    .catch(err => console.error('MongoDB connection error:', err));
+    .catch(err => console.error('MongoDB connection error:', err.message));
 
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
@@ -44,15 +45,10 @@ wss.on('connection', (ws) => {
     ws.on('message', async (message) => {
         try {
             const data = JSON.parse(message);
-            
-            if (data.type === 'greeting') {
-                console.log(data.message); // Outputs "hello"
-                ws.send(JSON.stringify({ status: 'success', message: 'Greeting received' }));
-            }
-            
+
             if (data.type === 'new_recording') {
                 // Create a new recording entry
-                await db.collection('recordings').insertOne({
+                const insertResponse = await db.collection('recordings').insertOne({
                     recording_id: data.recording_id,
                     patient_id: data.patient_id,
                     device_id: data.device_id,
@@ -63,37 +59,12 @@ wss.on('connection', (ws) => {
                     created_at: new Date()
                 });
 
-                ws.send(JSON.stringify({ status: 'success', message: 'New recording created' }));
-            } 
-            else if (data.type === 'segment') {
-                // Append new segment to the recording
-                const existingRecording = await db.collection('recordings').findOne({ recording_id: data.recording_id });
-
-                if (!existingRecording) {
-                    ws.send(JSON.stringify({ status: 'error', message: 'Recording not found' }));
-                    return;
+                if (insertResponse.insertedCount === 1) {
+                    ws.send(JSON.stringify({ status: 'success', message: 'New recording created' }));
+                } else {
+                    ws.send(JSON.stringify({ status: 'error', message: 'Failed to create recording' }));
                 }
-
-                await db.collection('recordings').updateOne(
-                    { recording_id: data.recording_id },
-                    { 
-                        $push: { segments: data.segment }, // Append new segment
-                        $set: { end_time: new Date(data.timestamp), updated_at: new Date() } // Update end time
-                    }
-                );
-
-                ws.send(JSON.stringify({ status: 'success', message: 'Segment stored' }));
-            } 
-            else if (data.type === 'complete_recording') {
-                // Mark recording as completed
-                await db.collection('recordings').updateOne(
-                    { recording_id: data.recording_id },
-                    { $set: { status: 'completed', updated_at: new Date() } }
-                );
-
-                ws.send(JSON.stringify({ status: 'success', message: 'Recording marked as completed' }));
-            } 
-            else {
+            } else {
                 ws.send(JSON.stringify({ status: 'error', message: 'Unknown data type' }));
             }
         } catch (error) {
@@ -101,7 +72,7 @@ wss.on('connection', (ws) => {
             ws.send(JSON.stringify({ status: 'error', message: 'Invalid data format' }));
         }
     });
-    
+
     ws.on('close', () => {
         console.log('Client disconnected');
     });
