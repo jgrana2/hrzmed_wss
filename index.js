@@ -21,7 +21,7 @@ const wss = new WebSocket.Server({ server });
 // MongoDB connection URI using the service name 'mongo'
 const mongoUser = process.env.MONGO_USER
 const mongoPass = process.env.MONGO_PASSWORD
-const dbName = process.env.MONGO_DBNAME;
+const dbName = process.env.DBNAME;
 const mongoUrl = `mongodb://${mongoUser}:${mongoPass}@mongo:27017/${dbName}`
 console.log('Mongo User:', mongoUser);
 console.log('Mongo Pass:', mongoPass);
