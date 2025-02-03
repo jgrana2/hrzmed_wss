@@ -1,15 +1,15 @@
 // client.js
 const WebSocket = require('ws');
 
-// WSS endpoint (replace with your actual domain if different)
-const WSS_URL = 'wss://hrzmed.org/'; // Ensure the path matches your Nginx config
+// WSS endpoint
+const WSS_URL = 'wss://hrzmed.org/';
 
-// Unique identifiers for the recording and segments
+// Example unique identifiers for the recording and segments
 const RECORDING_ID = 'rec12345';
 const PATIENT_ID = 'patient67890';
 const DEVICE_ID = 'deviceABCDE';
 
-// Sample segments data (replace with actual data as needed)
+// Sample segments data
 const SEGMENTS = [
   { segment_id: 'seg1', data: 'Segment 1 data', timestamp: Date.now() },
   { segment_id: 'seg2', data: 'Segment 2 data', timestamp: Date.now() },

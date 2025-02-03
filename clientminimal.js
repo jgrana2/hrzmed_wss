@@ -1,6 +1,5 @@
-// test_ws.js
 const WebSocket = require('ws');
-const WSS_URL = 'wss://hrzmed.org/'; // Ensure this is the updated URL
+const WSS_URL = 'wss://hrzmed.org/';
 
 const ws = new WebSocket(WSS_URL);
 
