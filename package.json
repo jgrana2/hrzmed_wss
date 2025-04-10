@@ -19,7 +19,7 @@
   "homepage": "https://github.com/jgrana2/hrzmed_wss#readme",
   "dependencies": {
     "dotenv": "^16.4.7",
-    "mongoose": "^8.9.5",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "mongodb": "^4.10.0"
   }
 }
