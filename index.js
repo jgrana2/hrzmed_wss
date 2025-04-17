@@ -3,24 +3,13 @@ const http = require('http');
 const WebSocket = require('ws');
 const { MongoClient } = require('mongodb');
 
-// Create HTTP server
-const server = http.createServer((req, res) => {
-  if (req.url === '/') {
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end('<html><body><h1>Hello World</h1></body></html>');
-  } else {
-    res.writeHead(404, { 'Content-Type': 'text/plain' });
-    res.end('404 Not Found');
-  }
-});
-
 // Retrieve connection string from environment (docker-compose environment vars)
 const mongoUri = process.env.MONGO_URI || `mongodb://mongo:27017/${process.env.DBNAME}`;
 
 let client;
 let db;
 
-// Connect to MongoDB before starting the WebSocket server
+// Connect to MongoDB before starting the server
 async function connectToDatabase() {
   try {
     client = new MongoClient(mongoUri);
@@ -29,83 +18,93 @@ async function connectToDatabase() {
     console.log('Connected to MongoDB');
   } catch (err) {
     console.error('Failed to connect to MongoDB:', err);
+    process.exit(1); // exit if connection fails
   }
 }
 
-// Simple WebSocket server
-const wss = new WebSocket.Server({ port: 3000 }, async () => {
-  await connectToDatabase(); // Connect to the database before accepting connections
-  console.log('WebSocket server is running on port 3000');
-});
-
-// MongoDB Connection Info
-const mongoUser = process.env.MONGO_USER;
-const mongoPass = process.env.MONGO_PASSWORD;
-const dbName = process.env.DBNAME;
-const mongoUrl = `mongodb://${mongoUser}:${mongoPass}@mongo:27017/${dbName}`;
-
-console.log('Mongo User:', mongoUser);
-console.log('Mongo Pass:', mongoPass);
-console.log('DB Name:', dbName);
-console.log('Mongo URL:', mongoUrl);
-
-// Handle WebSocket connections
-wss.on('connection', (ws) => {
-  console.log('New client connected');
-
-  ws.on('message', async (message) => {
-    // console.log(`Received: ${message}`);
-    try {
-      const data = JSON.parse(message);
-
-      // Check if the message type is "ecg_sample"
-      if (data.type === "ecg_sample") {
-        const collection = db.collection('received_data'); // Use the connected db
-
-        await collection.insertOne({
-          timestamp: new Date(),
-          data,
-        });
-
-        console.log(`Saved: ${message}`);
-      } else {
-        // Print the message if it's not of type "ecg_sample"
-        console.log(`Received: ${message}`);
-      }
-    } catch (err) {
-      console.error('Error handling message:', err);
-    }
-  });
-
-  if (data.type === 'new_recording') {
-    // Create a new recording entry
-    const insertResponse = await db.collection('recordings').insertOne({
-      recording_id: data.recording_id,
-      patient_id: data.patient_id,
-      device_id: data.device_id,
-      start_time: new Date(data.start_time),
-      end_time: new Date(data.start_time),
-      segments: [],
-      status: 'in_progress',
-      created_at: new Date()
-    });
-
-    if (insertResponse.insertedCount === 1) {
-      ws.send(JSON.stringify({ status: 'success', message: 'New recording created' }));
-    } else {
-      ws.send(JSON.stringify({ status: 'error', message: 'Failed to create recording' }));
-    }
+// Create the default HTTP server
+const server = http.createServer((req, res) => {
+  if (req.url === '/') {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(`
+      <html>
+        <head>
+          <title>Welcome to HRZMed</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background-color: #f4f4f4;
+              text-align: center;
+              padding: 50px;
+            }
+            h1 {
+              color: #333;
+            }
+            p {
+              font-size: 18px;
+              color: #666;
+            }
+            a {
+              color: #007BFF;
+              text-decoration: none;
+            }
+            a:hover {
+              text-decoration: underline;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Welcome to HRZMed</h1>
+          <p>Your health is important to us.</p>
+          <p><a href="/about">Learn more about our services</a></p>
+        </body>
+      </html>
+    `);
   } else {
-    ws.send(JSON.stringify({ status: 'error', message: 'Unknown data type' }));
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('404 Not Found');
   }
 });
 
-ws.on('close', () => {
-  console.log('Client disconnected');
-});
+const PORT = process.env.PORT || 3000;
 
-// Start server on internal port (e.g., 3000)
-const PORT = 3000;
-server.listen(PORT, () => {
-  console.log(`HTTP server is listening on port ${PORT}`);
+// First, connect to the database, then start the server and attach the WebSocket server
+connectToDatabase().then(() => {
+  server.listen(PORT, () => {
+    console.log(`HTTP server is listening on port ${PORT}`);
+  });
+
+  // Attach WebSocket server to the existing HTTP server
+  const wss = new WebSocket.Server({ server });
+  console.log(`WebSocket server is attached to HTTP server on port ${PORT}`);
+
+  wss.on('connection', (ws) => {
+    console.log('New client connected');
+
+    ws.on('message', async (message) => {
+      try {
+        const data = JSON.parse(message);
+        
+        // Handle different message types
+        if (data.type === 'ecg_chunk') {
+          const collection = db.collection('ecg_chunks');
+          await collection.insertOne({
+            timestamp: new Date(),
+            data,
+          });
+          console.log(`Saved: ${message}`);
+        } else {
+          console.log(`Received: ${message}`);
+        }
+      } catch (error) {
+        console.error('Error handling message:', error);
+      }
+    });
+
+    ws.on('close', () => {
+      console.log('Client disconnected');
+    });
+  });
+}).catch(err => {
+  console.error('Error connecting to database:', err);
 });
