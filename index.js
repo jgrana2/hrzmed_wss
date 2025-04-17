@@ -83,14 +83,34 @@ connectToDatabase().then(() => {
 
     ws.on('message', async (message) => {
       try {
-        const data = JSON.parse(message);
+        const msgData = JSON.parse(message);
         
-        // Handle different message types
-        if (data.type === 'ecg_chunk') {
+        // Try to parse nested message JSON string if it exists
+        try {
+          if (msgData.message) {
+            const innerData = JSON.parse(msgData.message);
+            
+            // Handle register_patient message type
+            if (innerData.type === 'register_patient' && innerData.patient) {
+              const collection = db.collection('patients');
+              await collection.insertOne({
+                ...innerData.patient,
+                timestamp: new Date(),
+              });
+              console.log(`Saved patient: ${innerData.patient.name}`);
+              return;
+            }
+          }
+        } catch (parseError) {
+          // Continue with normal processing if inner parsing fails
+        }
+        
+        // Handle other message types
+        if (msgData.type === 'ecg_chunk') {
           const collection = db.collection('ecg_chunks');
           await collection.insertOne({
             timestamp: new Date(),
-            data,
+            data: msgData,
           });
           console.log(`Saved: ${message}`);
         } else {
