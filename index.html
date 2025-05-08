@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced 3-Lead ECG Live Viewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827;
+            /* Tailwind gray-900 - Deeper background */
+            color: #d1d5db;
+            /* Tailwind gray-300 - Softer text */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            /* Align to top for scrolling */
+            min-height: 100vh;
+            padding: 1rem;
+            /* Base padding */
+        }
+
+        .ecg-canvas {
+            background-color: #000000;
+            /* Pure black for high contrast trace */
+            border: 1px solid #374151;
+            /* Tailwind gray-700 - Subtle border */
+            border-radius: 0.5rem;
+            /* rounded-lg */
+            width: 100%;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            /* Subtle shadow */
+        }
+
+        .status-connected {
+            color: #22c55e;
+            /* Tailwind green-500 - Vibrant green */
+        }
+
+        .status-simulated {
+            color: #eab308;
+            /* Tailwind yellow-500 - Vibrant yellow */
+        }
+
+        .status-disconnected {
+            color: #ef4444;
+            /* Tailwind red-500 - Vibrant red */
+        }
+
+        .status-connecting {
+            color: #f97316;
+            /* Tailwind orange-500 - Vibrant orange */
+        }
+
+        .btn {
+            padding: 0.625rem 1.25rem;
+            /* Slightly larger padding */
+            border-radius: 0.375rem;
+            /* rounded-md */
+            font-weight: 600;
+            /* semibold */
+            transition: all 0.2s ease-in-out;
+            text-transform: uppercase;
+            /* Uppercase text for buttons */
+            letter-spacing: 0.05em;
+            /* Slight letter spacing */
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background-color: #0ea5e9;
+            /* Tailwind sky-500 */
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: #0284c7;
+            /* Tailwind sky-600 */
+            transform: translateY(-1px);
+            /* Subtle lift */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .btn-danger {
+            background-color: #d946ef;
+            /* Tailwind fuchsia-500 (more distinct disconnect) */
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background-color: #c026d3;
+            /* Tailwind fuchsia-600 */
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .input-field {
+            background-color: #1f2937;
+            /* Tailwind gray-800 */
+            border: 1px solid #4b5563;
+            /* Tailwind gray-600 */
+            color: #e5e7eb;
+            /* Tailwind gray-200 */
+            padding: 0.625rem 0.75rem;
+            border-radius: 0.375rem;
+            /* rounded-md */
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #0ea5e9;
+            /* Tailwind sky-500 */
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.3);
+            /* Focus ring */
+        }
+
+        .input-field:disabled {
+            background-color: #374151;
+            /* Tailwind gray-700 */
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .form-checkbox {
+            /* Custom styled checkbox */
+            appearance: none;
+            padding: 0;
+            display: inline-block;
+            vertical-align: middle;
+            background-origin: border-box;
+            user-select: none;
+            flex-shrink: 0;
+            height: 1.25rem;
+            /* Larger checkbox */
+            width: 1.25rem;
+            color: #0ea5e9;
+            /* Tailwind sky-500 */
+            background-color: #374151;
+            /* Tailwind gray-700 */
+            border: 1px solid #4b5563;
+            /* Tailwind gray-600 */
+            border-radius: 0.25rem;
+            /* rounded */
+            transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+        }
+
+        .form-checkbox:checked {
+            background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath fill-rule='evenodd' clip-rule='evenodd' d='M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.35 2.35 4.492-6.738a.75.75 0 0 1 1.04-.208Z'/%3e%3c/svg%3e");
+            border-color: #0ea5e9;
+            /* Tailwind sky-500 */
+            background-color: #0ea5e9;
+            /* Tailwind sky-500 */
+            background-size: 100% 100%;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        .form-checkbox:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.3);
+            /* Focus ring */
+        }
+
+        .form-checkbox:disabled {
+            opacity: 0.5;
+            border-color: #4b5563;
+            background-color: #374151;
+        }
+
+        .ecg-trace {
+            stroke: #10b981;
+            /* Tailwind emerald-500 - Brighter trace */
+            stroke-width: 1.75;
+            /* Slightly thinner for sharpness */
+            fill: none;
+            stroke-linecap: round;
+            /* Smoother line ends */
+            stroke-linejoin: round;
+            /* Smoother line joins */
+        }
+
+        .card {
+            background-color: #1f2937;
+            /* Tailwind gray-800 */
+            border-radius: 0.75rem;
+            /* rounded-xl */
+            padding: 1.5rem;
+            /* p-6 */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            /* Softer, larger shadow */
+        }
+
+        .lead-title {
+            color: #60a5fa;
+            /* Tailwind blue-400 for lead titles */
+            font-weight: 600;
+            /* semibold */
+        }
+
+        #logo {
+            width: 60px;
+            height: auto;
+            margin-bottom: 1rem;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body class="p-4 md:p-8">
+
+    <div class="w-full max-w-7xl mx-auto">
+        <header class="mb-8 text-center">
+            <div class="flex flex-col items-center space-y-2">
+                    <img src="logohm.png" id="logo" alt="">
+                <h1
+                    class="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">
+                    Live ECG Monitor
+                </h1>
+                <p class="text-gray-400 text-lg">Real-time 3-Lead ECG Visualization</p>
+                <!-- Global heart rate indicator -->
+                <div id="globalHRContainer" class="mt-4 text-center">
+                    <span class="text-2xl md:text-4xl font-bold text-white">
+                        Heart Rate: <span id="globalHR">-- BPM</span>
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <div class="mb-8 card">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                <div class="md:col-span-2">
+                    <label for="wsUrl" class="block mb-2 text-sm font-medium text-gray-400">WebSocket Server URL</label>
+                    <input type="text" id="wsUrl" class="input-field w-full" value="wss://hrzmed.org"
+                        placeholder="e.g., wss://hrzmed.org">
+                </div>
+                <button id="connectBtn" class="btn btn-primary w-full md:w-auto justify-center">Connect</button>
+            </div>
+            <div class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-center space-x-3 bg-gray-800 rounded-lg px-4 py-2">
+                    <input type="checkbox" id="simulatorSwitch" class="form-checkbox">
+                    <label for="simulatorSwitch"
+                        class="text-sm font-medium text-gray-300 select-none flex items-center">
+                        <svg class="w-4 h-4 mr-2 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z">
+                            </path>
+                        </svg>
+                        Use Simulator Mode
+                    </label>
+                </div>
+                <div class="flex items-center space-x-2 bg-gray-800 rounded-lg px-4 py-2">
+                    <div id="statusIndicator" class="relative flex h-3 w-3">
+                        <span
+                            class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-red-400"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    </div>
+                    <p class="text-sm text-gray-300">Status: <span id="status"
+                            class="font-semibold status-disconnected text-base">Disconnected</span></p>
+                </div>
+            </div>
+        </div>
+
+        <main id="leadsGrid" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        </main>
+
+        <footer class="mt-12 text-center text-xs text-gray-500">
+            <p>ECG data is for illustrative purposes. Ensure connection to a compatible WebSocket server or use
+                simulator.</p>
+            <p>&copy; 2025 ECG Monitor Interface. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+        // DOM Elements (globally accessible for static elements)
+        const wsUrlInput = document.getElementById('wsUrl');
+        const connectBtn = document.getElementById('connectBtn');
+        const statusDisplay = document.getElementById('status');
+        const simulatorSwitch = document.getElementById('simulatorSwitch');
+
+        let leadCanvases = []; // Will be populated on window load
+
+        let webSocket = null;
+        let isConnected = false;
+        let isSimulatorActive = false;
+        let mockDataInterval = null;
+
+        // ECG sampling configuration
+        const SAMPLE_RATE = 250;           // samples per second (250 Hz)
+        const WINDOW_SECONDS = 6;         // display window duration in seconds
+        const MAX_DATA_POINTS = SAMPLE_RATE * WINDOW_SECONDS; // total samples in display window
+
+        const leadData = {
+            leadI: [],
+            leadII: [],
+            leadIII: []
+        };
+
+        const AMPLITUDE_MIN = -1.5;
+        const AMPLITUDE_MAX = 1.5;
+
+        // Heart-rate calculation variables
+        const HR_WINDOW_SECONDS = WINDOW_SECONDS;                           // duration for HR calculation
+        const HR_WINDOW_SIZE = SAMPLE_RATE * HR_WINDOW_SECONDS; // samples in HR calculation window
+        const MIN_RR_INTERVAL = Math.round(0.2 * SAMPLE_RATE);  // minimum samples between R peaks (200 ms)
+        const QRS_THRESHOLD = 0.5;                              // threshold for R peak detection
+
+        // Function to update status indicator appearance
+        function updateStatusIndicator(status) {
+            const indicator = document.getElementById('statusIndicator');
+            if (!indicator) return;
+
+            const colors = {
+                'connected': 'bg-green-400',
+                'simulated': 'bg-yellow-400',
+                'disconnected': 'bg-red-400',
+                'connecting': 'bg-orange-400'
+            };
+
+            // Remove all possible color classes
+            indicator.children[0].className = `animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${colors[status]}`;
+            indicator.children[1].className = `relative inline-flex rounded-full h-3 w-3 ${colors[status].replace('400', '500')}`;
+        }
+
+        // Function to clear all lead data buffers
+        function clearLeadData() {
+            leadData.leadI = [];
+            leadData.leadII = [];
+            leadData.leadIII = [];
+        }
+
+        // WebSocket onOpen event handler
+        function onOpen(event) {
+            console.log("WebSocket connection established.");
+            statusDisplay.textContent = "Connected";
+            statusDisplay.className = "font-semibold status-connected text-base";
+            updateStatusIndicator('connected');
+            connectBtn.textContent = "Disconnect";
+            connectBtn.classList.remove('btn-primary');
+            connectBtn.classList.add('btn-danger');
+            wsUrlInput.disabled = true;
+            simulatorSwitch.disabled = true;
+            isConnected = true;
+            isSimulatorActive = false;
+        }
+
+        // WebSocket onMessage event handler
+        function onMessage(event) {
+            // Helper to process text data
+            const processText = (text) => {
+                try {
+                    const data = JSON.parse(text);
+
+                    // Handle incoming ECG chunks
+                    if (data.type === 'ecg_chunk' && Array.isArray(data.values)) {
+                        const leadKey = data.channel === 1
+                            ? 'leadI'
+                            : data.channel === 2
+                            ? 'leadII'
+                            : data.channel === 3
+                            ? 'leadIII'
+                            : null;
+
+                        if (leadKey) {
+                            data.values.forEach(value => updateLeadData(leadKey, value));
+                        }
+                    }
+                    // Add other message types here if needed
+                } catch (error) {
+                    console.error("Error processing message:", error, "Raw data:", text);
+                }
+            };
+
+            // Handle Blob (binary) or string
+            if (event.data instanceof Blob) {
+                event.data.text()
+                    .then(text => processText(text))
+                    .catch(err => console.error("Error reading blob message:", err));
+            } else {
+                processText(event.data);
+            }
+        }
+
+        // WebSocket onError event handler
+        function onError(event) {
+            console.error("WebSocket error:", event);
+            statusDisplay.textContent = "Error";
+            statusDisplay.className = "font-semibold status-disconnected text-base"; // Keep consistent with onClose
+        }
+
+        // WebSocket onClose event handler
+        function onClose(event) {
+            console.log("WebSocket connection closed.", event ? event.reason : "No event reason");
+            statusDisplay.textContent = `Disconnected ${event ? '(' + event.code + ')' : ''}`;
+            statusDisplay.className = "font-semibold status-disconnected text-base";
+            connectBtn.textContent = "Connect";
+            connectBtn.classList.remove('btn-danger');
+            connectBtn.classList.add('btn-primary');
+            wsUrlInput.disabled = false;
+            simulatorSwitch.disabled = false;
+            isConnected = false;
+            isSimulatorActive = false; // Ensure simulator is also marked inactive
+            webSocket = null;
+            clearLeadData(); // Clear data buffers on disconnect
+        }
+
+        // Function to calculate heart rate from a data buffer
+        function calculateHeartRate(buffer) {
+            if (buffer.length < HR_WINDOW_SIZE) return 0;
+
+            const recentData = buffer.slice(-HR_WINDOW_SIZE);
+            // Dynamically normalize recent data for QRS detection
+            const minVal = Math.min(...recentData);
+            const maxVal = Math.max(...recentData);
+            const range = maxVal - minVal || 1;
+            const normData = recentData.map(v => (v - minVal) / range);
+            const rPeaks = [];
+            let lastPeakIndex = -MIN_RR_INTERVAL;
+
+            // Detect R peaks
+            for (let i = 1; i < normData.length - 1; i++) {
+                if (i - lastPeakIndex >= MIN_RR_INTERVAL && // Minimum distance between peaks
+                    normData[i] > QRS_THRESHOLD && // Above threshold
+                    normData[i] > normData[i - 1] && // Higher than previous
+                    normData[i] >= normData[i + 1]) { // Higher than or equal to next
+                    rPeaks.push(i);
+                    lastPeakIndex = i;
+                }
+            }
+
+            // Calculate average RR interval and convert to BPM
+            if (rPeaks.length < 2) return 0;
+
+            let totalRR = 0;
+            for (let i = 1; i < rPeaks.length; i++) {
+                totalRR += rPeaks[i] - rPeaks[i - 1];
+            }
+
+            const avgRR = totalRR / (rPeaks.length - 1);
+            const samplingRate = SAMPLE_RATE; // Hz
+            const bpm = Math.round((60 * samplingRate) / avgRR);
+
+            return bpm >= 30 && bpm <= 200 ? bpm : 0; // Return BPM if within physiological range
+        }
+
+        // Function to add new data to a lead's buffer and remove the oldest if full
+        function updateLeadData(leadKey, value) {
+            const buffer = leadData[leadKey];
+            buffer.push(value);
+            if (buffer.length > MAX_DATA_POINTS) {
+                buffer.shift(); // Remove the oldest data point
+            }
+
+            // Update global heart rate once per second from Lead I only
+            if (leadKey === 'leadI' && buffer.length % SAMPLE_RATE === 0) {
+                const hr = calculateHeartRate(buffer);
+                const globalHRDisplay = document.getElementById('globalHR');
+                if (globalHRDisplay) {
+                    globalHRDisplay.textContent = hr > 0 ? `${hr} BPM` : '-- BPM';
+                }
+            }
+        }
+
+        // Function to draw the grid on a canvas
+        function drawGrid(ctx, canvas) {
+            if (!ctx || !canvas) {
+                console.error("drawGrid: Missing context or canvas");
+                return;
+            }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000000'; // Black background for canvas
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const gridColor = "rgba(0, 255, 0, 0.1)"; // Faint green for minor grid lines
+            const majorGridColor = "rgba(0, 255, 0, 0.2)"; // Slightly more prominent for major grid lines
+
+            // Calculate grid spacing based on canvas dimensions and desired density
+            const pixelsPerMmY = canvas.height / 20; // e.g., canvas height represents 20mm
+            const pixelsPerMmX = canvas.width / (MAX_DATA_POINTS / 15); // Adjust for visual density related to data points
+
+            ctx.lineWidth = 0.5; // Fine lines for the grid
+
+            // Draw horizontal grid lines
+            for (let i = 0; i * pixelsPerMmY <= canvas.height; i++) {
+                const y = i * pixelsPerMmY;
+                ctx.beginPath();
+                ctx.strokeStyle = (i % 5 === 0) ? majorGridColor : gridColor; // Major line every 5th
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Draw vertical grid lines
+            for (let i = 0; i * pixelsPerMmX <= canvas.width; i++) {
+                const x = i * pixelsPerMmX;
+                ctx.beginPath();
+                ctx.strokeStyle = (i % 5 === 0) ? majorGridColor : gridColor; // Major line every 5th
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+        }
+
+        // Function to draw the ECG waveform on a canvas
+        function drawWaveform(lc, dataPoints) {
+            if (!lc || !lc.ctx || !lc.canvas) {
+                console.error("drawWaveform: Missing lead context or canvas information.");
+                return;
+            }
+            const { ctx, canvas } = lc;
+            // Compute dynamic amplitude range based on current data buffer
+            const minVal = Math.min(...dataPoints);
+            const maxVal = Math.max(...dataPoints);
+            const range = (maxVal - minVal) || 1; // Prevent division by zero
+            drawGrid(ctx, canvas); // Redraw grid each frame before drawing waveform
+            if (dataPoints.length < 2) return; // Need at least two points to draw a line
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#10b981'; // ECG trace color (emerald-500)
+            ctx.lineWidth = 1.75; // Line thickness for the trace
+            const stepX = canvas.width / (MAX_DATA_POINTS - 1); // Horizontal step per data point
+
+            // Plot each data point
+            for (let i = 0; i < dataPoints.length; i++) {
+                const rawValue = dataPoints[i];
+                // Normalize the value to fit canvas height using dynamic range
+                const normalizedValue = (rawValue - minVal) / range;
+                const y = canvas.height - (normalizedValue * canvas.height); // Invert Y-axis (0 is top in canvas)
+                const x = i * stepX;
+
+                if (i === 0) {
+                    ctx.moveTo(x, y); // Start path at the first point
+                } else {
+                    ctx.lineTo(x, y); // Draw line to subsequent points
+                }
+            }
+            ctx.stroke(); // Render the path
+        }
+
+        // Main animation loop using requestAnimationFrame for smooth rendering
+        function animationLoop() {
+            // Compute Lead III using Einthoven's law: Lead III = Lead II - Lead I
+            leadData.leadIII = leadData.leadII.map((value, index) => {
+                const leadIVal = leadData.leadI[index] || 0;
+                return value - leadIVal;
+            });
+
+            if (isConnected || isSimulatorActive) { // Only draw if connected or simulator is active
+                leadCanvases.forEach(lc => {
+                    if (lc.canvas && lc.canvas.parentElement) {
+                        // Make canvas responsive to its parent container's width
+                        const parentWidth = lc.canvas.parentElement.clientWidth;
+                        if (parentWidth > 0 && lc.canvas.width !== parentWidth) {
+                            lc.canvas.width = parentWidth;
+                        }
+                        // Draw waveform using the lead's specific data array
+                        if (lc.id && leadData[lc.id]) { // lc.id should be 'leadI', 'leadII', or 'leadIII'
+                            drawWaveform(lc, leadData[lc.id]);
+                        }
+                    }
+                });
+            } else { // If not connected, draw empty grids
+                leadCanvases.forEach(lc => {
+                    if (lc.canvas && lc.canvas.parentElement) {
+                        const parentWidth = lc.canvas.parentElement.clientWidth;
+                        if (parentWidth > 0 && lc.canvas.width !== parentWidth) {
+                            lc.canvas.width = parentWidth;
+                        }
+                        if (lc.ctx && lc.canvas) drawGrid(lc.ctx, lc.canvas); // Draw empty grid
+                    }
+                });
+            }
+            requestAnimationFrame(animationLoop); // Continue the loop
+        }
+
+        // --- Simulator Logic ---
+        let beatCycleTime = 0; // Tracks progress within a single heartbeat cycle for the simulator
+        // Constants defining the shape of a simulated PQRST complex
+        const P_WAVE_AMP = 0.1, P_WAVE_DUR = 0.08 * 50; // Duration in samples (assuming 50Hz sampling for mock)
+        const QRS_AMP = 1.0, QRS_DUR = 0.1 * 50;
+        const T_WAVE_AMP = 0.3, T_WAVE_DUR = 0.16 * 50;
+        const PR_INTERVAL = 0.16 * 50;
+        const ST_SEGMENT = 0.12 * 50;
+        const RR_INTERVAL = 1 * 50; // Heart rate of 60 BPM (1 beat per second)
+
+        // Generates a single point for a more realistic-looking ECG waveform
+        function generateRealisticMockECGPoint() {
+            let val = 0;
+            const noise = (Math.random() - 0.5) * 0.05; // Add some random noise
+
+            // P wave
+            if (beatCycleTime < P_WAVE_DUR) val = P_WAVE_AMP * Math.sin((Math.PI * beatCycleTime) / P_WAVE_DUR);
+            // PR segment (isoelectric)
+            else if (beatCycleTime < P_WAVE_DUR + PR_INTERVAL) val = 0;
+            // QRS complex
+            else if (beatCycleTime < P_WAVE_DUR + PR_INTERVAL + QRS_DUR) {
+                const qrs_t = beatCycleTime - (P_WAVE_DUR + PR_INTERVAL);
+                if (qrs_t < QRS_DUR / 3) val = -0.2 * QRS_AMP * Math.sin((3 * Math.PI * qrs_t) / QRS_DUR); // Q
+                else if (qrs_t < (2 * QRS_DUR) / 3) val = QRS_AMP * Math.sin((3 * Math.PI * (qrs_t - QRS_DUR / 3)) / QRS_DUR); // R
+                else val = -0.3 * QRS_AMP * Math.sin((3 * Math.PI * (qrs_t - (2 * QRS_DUR) / 3)) / QRS_DUR); // S
+            }
+            // ST segment (isoelectric)
+            else if (beatCycleTime < P_WAVE_DUR + PR_INTERVAL + QRS_DUR + ST_SEGMENT) val = 0;
+            // T wave
+            else if (beatCycleTime < P_WAVE_DUR + PR_INTERVAL + QRS_DUR + ST_SEGMENT + T_WAVE_DUR) {
+                const t_wave_t = beatCycleTime - (P_WAVE_DUR + PR_INTERVAL + QRS_DUR + ST_SEGMENT);
+                val = T_WAVE_AMP * Math.sin((Math.PI * t_wave_t) / T_WAVE_DUR);
+            }
+            // Isoelectric line after T wave
+            else val = 0;
+
+            beatCycleTime++; // Advance time in the beat cycle
+            if (beatCycleTime >= RR_INTERVAL) beatCycleTime = 0; // Reset for next beat
+            return val + noise;
+        }
+
+        // Generates mock data for all three leads
+        function generateMockData() {
+            const baseSignalI = generateRealisticMockECGPoint();
+            // Create some variation for Lead II for a more distinct look in simulation
+            const baseSignalII = generateRealisticMockECGPoint() * 0.8 + (Math.random() - 0.5) * 0.1;
+
+            updateLeadData('leadI', baseSignalI);
+            updateLeadData('leadII', baseSignalII);
+            // Lead III = Lead II - Lead I (approximating Einthoven's law for simulation)
+            updateLeadData('leadIII', baseSignalII - baseSignalI + (Math.random() - 0.5) * 0.03);
+        }
+
+        // Starts the ECG simulator
+        function startSimulator() {
+            isConnected = true; // Treat simulator as a "connection" for UI state
+            isSimulatorActive = true;
+            statusDisplay.textContent = "Connected (Simulated)";
+            statusDisplay.className = "font-semibold status-simulated text-base";
+            updateStatusIndicator('simulated');
+            connectBtn.textContent = "Disconnect";
+            connectBtn.classList.remove('btn-primary');
+            connectBtn.classList.add('btn-danger');
+            wsUrlInput.disabled = true;
+            simulatorSwitch.disabled = true;
+            clearLeadData(); // Clear any existing data
+            beatCycleTime = 0; // Reset simulator beat cycle
+            mockDataInterval = setInterval(generateMockData, 20); // Generate data at ~50Hz
+            console.log("Simulator started.");
+        }
+
+        // Stops the ECG simulator
+        function stopSimulator() {
+            if (mockDataInterval) clearInterval(mockDataInterval); // Stop data generation
+            mockDataInterval = null;
+            isConnected = false;
+            isSimulatorActive = false;
+            statusDisplay.textContent = "Disconnected";
+            statusDisplay.className = "font-semibold status-disconnected text-base";
+            updateStatusIndicator('disconnected');
+            connectBtn.textContent = "Connect";
+            connectBtn.classList.remove('btn-danger');
+            connectBtn.classList.add('btn-primary');
+            wsUrlInput.disabled = false;
+            simulatorSwitch.disabled = false;
+            clearLeadData(); // Clear data buffers
+            console.log("Simulator stopped.");
+        }
+
+        // Connects to the WebSocket server
+        function connectWebSocket() {
+            if (webSocket && (webSocket.readyState === WebSocket.OPEN || webSocket.readyState === WebSocket.CONNECTING)) return; // Already connected or connecting
+            const url = wsUrlInput.value.trim();
+            if (!url) { // Check if URL is provided
+                statusDisplay.textContent = "Please enter WebSocket URL";
+                statusDisplay.className = "font-semibold status-disconnected text-base";
+                setTimeout(() => { if (!isConnected && !isSimulatorActive) statusDisplay.textContent = "Disconnected"; }, 3000); // Reset status after a delay
+                return;
+            }
+            statusDisplay.textContent = "Connecting...";
+            statusDisplay.className = "font-semibold status-connecting text-base";
+            wsUrlInput.disabled = true; // Disable input while attempting to connect
+            simulatorSwitch.disabled = true;
+
+            try {
+                webSocket = new WebSocket(url);
+                webSocket.onopen = onOpen;
+                webSocket.onmessage = onMessage;
+                webSocket.onerror = onError;
+                webSocket.onclose = onClose;
+            } catch (error) {
+                console.error("Failed to create WebSocket:", error);
+                statusDisplay.textContent = "Connection Failed";
+                statusDisplay.className = "font-semibold status-disconnected text-base";
+                wsUrlInput.disabled = false; // Re-enable input on failure
+                simulatorSwitch.disabled = false;
+            }
+        }
+
+        // Disconnects from the WebSocket server
+        function disconnectWebSocket() {
+            if (webSocket) webSocket.close(1000, "Client initiated disconnect"); // Normal closure
+        }
+
+        // Event listener for the connect/disconnect button
+        connectBtn.addEventListener('click', () => {
+            if (isConnected || isSimulatorActive) { // If already "connected" (real or simulated)
+                if (isSimulatorActive) stopSimulator();
+                else disconnectWebSocket();
+            } else { // If not connected
+                if (simulatorSwitch.checked) startSimulator(); // Start simulator if checked
+                else connectWebSocket(); // Otherwise, connect to WebSocket
+            }
+        });
+
+        // Function to set up canvas dimensions and draw initial grid
+        function setupCanvases() {
+            leadCanvases.forEach(lc => {
+                if (!lc.canvas || !lc.ctx) return; // Skip if canvas or context is missing
+                const parentElement = lc.canvas.parentElement;
+                if (!parentElement) return; // Skip if parent element is not found
+
+                const parentWidth = parentElement.clientWidth;
+                if (parentWidth > 0) {
+                    lc.canvas.width = parentWidth; // Set canvas width to parent's width
+                } else {
+                    // Fallback if parent isn't rendered with a width yet
+                    lc.canvas.width = Math.min(window.innerWidth * 0.9, 600);
+                }
+                // Canvas height is fixed by the HTML attribute 'height="220"'
+                drawGrid(lc.ctx, lc.canvas); // Draw the initial grid
+            });
+        }
+
+        // Event listener for window load: dynamically creates lead cards and initializes canvases
+        window.addEventListener('load', () => {
+            const leadsGridElement = document.getElementById('leadsGrid');
+            if (!leadsGridElement) {
+                console.error("Fatal: leadsGrid element not found. Cannot create lead displays.");
+                return;
+            }
+
+            // Define the properties for each lead display
+            const leadDefinitions = [
+                { idPrefix: 'leadI', title: 'Lead I' },
+                { idPrefix: 'leadII', title: 'Lead II' },
+                { idPrefix: 'leadIII', title: 'Lead III' }
+            ];
+
+            // Generate HTML for the lead cards
+            let leadsHTML = '';
+            leadDefinitions.forEach(def => {
+                leadsHTML += `
+                    <div class="card" id="${def.idPrefix}Canvas-container">
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="text-xl font-semibold lead-title flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+                                </svg>
+                                ${def.title}
+                            </h2>
+                        </div>
+                        <canvas id="${def.idPrefix}Canvas" class="ecg-canvas" height="220"></canvas>
+                    </div>
+                `;
+            });
+            leadsGridElement.innerHTML = leadsHTML; // Insert the generated HTML into the main grid
+
+            // Initialize the leadCanvases array AFTER the HTML for canvases is inserted into the DOM
+            leadCanvases = leadDefinitions.map(def => {
+                const canvasElement = document.getElementById(`${def.idPrefix}Canvas`);
+                const containerElement = document.getElementById(`${def.idPrefix}Canvas-container`);
+                let context = null;
+                if (canvasElement) {
+                    context = canvasElement.getContext('2d');
+                } else {
+                    console.error(`Canvas element not found for ID: ${def.idPrefix}Canvas`);
+                }
+                if (canvasElement && !context) { // Check if context was successfully obtained
+                    console.error(`Failed to get 2D context for canvas: ${def.idPrefix}Canvas`);
+                }
+                return {
+                    id: def.idPrefix, // Store the base ID (e.g., 'leadI') for data mapping
+                    canvas: canvasElement,
+                    ctx: context,
+                    container: containerElement
+                };
+            });
+
+            setupCanvases(); // Initialize canvas sizes and draw initial grid
+            animationLoop(); // Start the animation loop
+        });
+
+        // Event listener for window resize to adjust canvas sizes
+        window.addEventListener('resize', () => {
+            setupCanvases(); // Re-setup canvases on resize
+            // If not connected, explicitly redraw grids as animationLoop might not be drawing waveforms
+            if (!isConnected && !isSimulatorActive) {
+                leadCanvases.forEach(lc => {
+                    if (lc.ctx && lc.canvas) drawGrid(lc.ctx, lc.canvas);
+                });
+            }
+        });
+    </script>
+
+</body>
+
+</html>
