@@ -113,6 +113,12 @@ connectToDatabase().then(() => {
             data: msgData,
           });
           console.log(`Saved: ${message}`);
+          // Broadcast the ECG chunk to all connected clients
+          wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(message);
+            }
+          });
         } else {
           console.log(`Received: ${message}`);
         }
