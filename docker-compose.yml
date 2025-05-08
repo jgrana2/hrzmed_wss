@@ -9,6 +9,7 @@ services:
       - "443:443"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./:/usr/share/nginx/html
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
       - certbot-www:/var/www/certbot
