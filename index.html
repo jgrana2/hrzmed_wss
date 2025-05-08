@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced 3-Lead ECG Live Viewer</title>
+    <title>Visor de ECG Online</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -222,13 +222,13 @@
                     <img src="logohm.png" id="logo" alt="">
                 <h1
                     class="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">
-                    Live ECG Monitor
+                    Monitor de ECG en Vivo
                 </h1>
-                <p class="text-gray-400 text-lg">Real-time 3-Lead ECG Visualization</p>
+                <p class="text-gray-400 text-lg">Visualización en tiempo real de ECG</p>
                 <!-- Global heart rate indicator -->
                 <div id="globalHRContainer" class="mt-4 text-center">
-                    <span class="text-2xl md:text-4xl font-bold text-white">
-                        Heart Rate: <span id="globalHR">-- BPM</span>
+                    <span class="text-xl md:text-2xl font-bold text-white">
+                        Frecuencia Cardíaca: <span id="globalHR">-- BPM</span>
                     </span>
                 </div>
             </div>
@@ -237,11 +237,11 @@
         <div class="mb-8 card">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                 <div class="md:col-span-2">
-                    <label for="wsUrl" class="block mb-2 text-sm font-medium text-gray-400">WebSocket Server URL</label>
+                    <label for="wsUrl" class="block mb-2 text-sm font-medium text-gray-400">URL del servidor WebSocket</label>
                     <input type="text" id="wsUrl" class="input-field w-full" value="wss://hrzmed.org"
                         placeholder="e.g., wss://hrzmed.org">
                 </div>
-                <button id="connectBtn" class="btn btn-primary w-full md:w-auto justify-center">Connect</button>
+                <button id="connectBtn" class="btn btn-primary w-full md:w-auto justify-center">Conectar</button>
             </div>
             <div class="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div class="flex items-center space-x-3 bg-gray-800 rounded-lg px-4 py-2">
@@ -253,7 +253,7 @@
                                 d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z">
                             </path>
                         </svg>
-                        Use Simulator Mode
+                        Usar modo simulador
                     </label>
                 </div>
                 <div class="flex items-center space-x-2 bg-gray-800 rounded-lg px-4 py-2">
@@ -262,8 +262,8 @@
                             class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-red-400"></span>
                         <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
                     </div>
-                    <p class="text-sm text-gray-300">Status: <span id="status"
-                            class="font-semibold status-disconnected text-base">Disconnected</span></p>
+                    <p class="text-sm text-gray-300">Estado: <span id="status"
+                            class="font-semibold status-disconnected text-base">Desconectado</span></p>
                 </div>
             </div>
         </div>
@@ -272,9 +272,8 @@
         </main>
 
         <footer class="mt-12 text-center text-xs text-gray-500">
-            <p>ECG data is for illustrative purposes. Ensure connection to a compatible WebSocket server or use
-                simulator.</p>
-            <p>&copy; 2025 ECG Monitor Interface. All rights reserved.</p>
+            <p>Los datos de ECG son solo con fines ilustrativos. Asegúrate de conectarte a un servidor WebSocket compatible o usar el simulador.</p>
+            <p>&copy; 2025 Horizon Medical SAS. Todos los derechos reservados.</p>
         </footer>
     </div>
 
@@ -339,10 +338,10 @@
         // WebSocket onOpen event handler
         function onOpen(event) {
             console.log("WebSocket connection established.");
-            statusDisplay.textContent = "Connected";
+            statusDisplay.textContent = "Conectado";
             statusDisplay.className = "font-semibold status-connected text-base";
             updateStatusIndicator('connected');
-            connectBtn.textContent = "Disconnect";
+            connectBtn.textContent = "Desconectar";
             connectBtn.classList.remove('btn-primary');
             connectBtn.classList.add('btn-danger');
             wsUrlInput.disabled = true;
@@ -398,9 +397,9 @@
         // WebSocket onClose event handler
         function onClose(event) {
             console.log("WebSocket connection closed.", event ? event.reason : "No event reason");
-            statusDisplay.textContent = `Disconnected ${event ? '(' + event.code + ')' : ''}`;
+            statusDisplay.textContent = `Desconectado`;
             statusDisplay.className = "font-semibold status-disconnected text-base";
-            connectBtn.textContent = "Connect";
+            connectBtn.textContent = "Conectar";
             connectBtn.classList.remove('btn-danger');
             connectBtn.classList.add('btn-primary');
             wsUrlInput.disabled = false;
@@ -637,10 +636,10 @@
         function startSimulator() {
             isConnected = true; // Treat simulator as a "connection" for UI state
             isSimulatorActive = true;
-            statusDisplay.textContent = "Connected (Simulated)";
+            statusDisplay.textContent = "Conectado (Simulado)";
             statusDisplay.className = "font-semibold status-simulated text-base";
             updateStatusIndicator('simulated');
-            connectBtn.textContent = "Disconnect";
+            connectBtn.textContent = "Desconectar";
             connectBtn.classList.remove('btn-primary');
             connectBtn.classList.add('btn-danger');
             wsUrlInput.disabled = true;
@@ -679,7 +678,7 @@
                 setTimeout(() => { if (!isConnected && !isSimulatorActive) statusDisplay.textContent = "Disconnected"; }, 3000); // Reset status after a delay
                 return;
             }
-            statusDisplay.textContent = "Connecting...";
+            statusDisplay.textContent = "Conectando...";
             statusDisplay.className = "font-semibold status-connecting text-base";
             wsUrlInput.disabled = true; // Disable input while attempting to connect
             simulatorSwitch.disabled = true;
@@ -744,9 +743,9 @@
 
             // Define the properties for each lead display
             const leadDefinitions = [
-                { idPrefix: 'leadI', title: 'Lead I' },
-                { idPrefix: 'leadII', title: 'Lead II' },
-                { idPrefix: 'leadIII', title: 'Lead III' }
+                { idPrefix: 'leadI', title: 'I' },
+                { idPrefix: 'leadII', title: 'II' },
+                { idPrefix: 'leadIII', title: 'III' }
             ];
 
             // Generate HTML for the lead cards
