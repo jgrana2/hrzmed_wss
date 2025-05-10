@@ -2,6 +2,7 @@ require('dotenv').config();
 const http = require('http');
 const WebSocket = require('ws');
 const { MongoClient } = require('mongodb');
+const { createProxyMiddleware } = require('http-proxy-middleware'); // Import proxy middleware
 
 // Retrieve connection string from environment (docker-compose environment vars)
 const mongoUri = process.env.MONGO_URI || `mongodb://mongo:27017/${process.env.DBNAME}`;
@@ -22,54 +23,25 @@ async function connectToDatabase() {
   }
 }
 
-// Create the default HTTP server
-const server = http.createServer((req, res) => {
-  if (req.url === '/') {
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(`
-      <html>
-        <head>
-          <title>Welcome to HRZMed</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              background-color: #f4f4f4;
-              text-align: center;
-              padding: 50px;
-            }
-            h1 {
-              color: #333;
-            }
-            p {
-              font-size: 18px;
-              color: #666;
-            }
-            a {
-              color: #007BFF;
-              text-decoration: none;
-            }
-            a:hover {
-              text-decoration: underline;
-            }
-          </style>
-        </head>
-        <body>
-          <h1>Welcome to HRZMed</h1>
-          <p>Your health is important to us.</p>
-          <p><a href="/about">Learn more about our services</a></p>
-        </body>
-      </html>
-    `);
-  } else {
-    res.writeHead(404, { 'Content-Type': 'text/plain' });
-    res.end('404 Not Found');
-  }
-});
-
 const PORT = process.env.PORT || 3000;
 
 // First, connect to the database, then start the server and attach the WebSocket server
 connectToDatabase().then(() => {
+  const proxy = createProxyMiddleware({
+    target: 'https://hrzmed.replit.app', // Target URL
+    changeOrigin: true,
+  });
+
+  const server = http.createServer((req, res) => {
+    proxy(req, res, (err) => {
+      if (err) {
+        console.error('Proxy error:', err);
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Proxy error');
+      }
+    });
+  });
+
   server.listen(PORT, () => {
     console.log(`HTTP server is listening on port ${PORT}`);
   });
